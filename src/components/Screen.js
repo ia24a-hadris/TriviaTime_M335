@@ -6,11 +6,11 @@ import { colors, sizes } from '@/theme';
  * Grundgerüst eines Screens: Safe Area oben, scrollbarer Inhalt und ein fixer Bereich unten
  * (footer) für die Hauptbuttons – damit liegen sie immer in der Daumenzone.
  */
-export default function Screen({ children, footer, dark = false, scroll = true }) {
+export default function Screen({ children, footer, dark = false, scroll = true, refreshControl }) {
   const bg = dark ? colors.game : colors.background;
   const Body = scroll ? ScrollView : View;
   const bodyProps = scroll
-    ? { contentContainerStyle: styles.content, keyboardShouldPersistTaps: 'handled' }
+    ? { contentContainerStyle: styles.content, keyboardShouldPersistTaps: 'handled', refreshControl }
     : { style: [styles.content, { flex: 1 }] };
 
   return (
