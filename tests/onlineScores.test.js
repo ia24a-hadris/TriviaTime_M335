@@ -2,7 +2,7 @@
 // geprüft werden Umwandlung, Sortierung, Zeitlimit und Fehler-Übersetzung.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toDoc, fromDoc, sortTop, withTimeout, toAppError, isOnlineConfigured, COLLECTION } from '../src/services/onlineScores.js';
+import { toDoc, fromDoc, sortTop, withTimeout, toAppError, isOnlineConfigured, isPermanentError, COLLECTION } from '../src/services/onlineScores.js';
 
 const entry = {
   id: 'abc',
@@ -59,4 +59,11 @@ test('Zeitlimit: keine Antwort → TIMEOUT', async () => {
 test('Firebase-Fehler werden übersetzt', () => {
   assert.equal(toAppError({ code: 'unavailable' }).code, 'OFFLINE');
   assert.equal(toAppError({ code: 'permission-denied' }).code, 'INVALID');
+});
+
+test('Nur «von den Regeln abgelehnt» gilt als endgültiger Fehler', () => {
+  assert.equal(isPermanentError(toAppError({ code: 'permission-denied' })), true);
+  assert.equal(isPermanentError(toAppError({ code: 'invalid-argument' })), true); // z. B. fehlendes Feld
+  assert.equal(isPermanentError(toAppError({ code: 'unavailable' })), false);
+  assert.equal(isPermanentError(new Error('x')), false);
 });

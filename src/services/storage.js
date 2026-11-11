@@ -90,11 +90,19 @@ export async function enqueueScore(entry) {
   await writeJson(KEYS.queue, [...queue, item].slice(-QUEUE_LIMIT));
 }
 
-/** Warteschlange mit send() abarbeiten; nicht gesendete bleiben gespeichert. */
-export async function flushQueue(send) {
+/**
+ * Warteschlange mit send() abarbeiten; nicht gesendete bleiben gespeichert.
+ * Was während des Sendens neu dazukommt (z. B. eine Runde endet gerade), geht nicht verloren.
+ */
+export async function flushQueue(send, options) {
   const queue = await getQueue();
-  const result = await flushWith(queue, send);
-  await writeJson(KEYS.queue, result.remaining);
+  const result = await flushWith(queue, send, options);
+  const done = new Set([...result.sent, ...result.dropped].map((e) => e.id));
+  const latest = await getQueue();
+  await writeJson(
+    KEYS.queue,
+    latest.filter((e) => !done.has(e.id))
+  );
   return result;
 }
 

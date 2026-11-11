@@ -4,13 +4,14 @@
 // Sicherheitsregeln hat und das Firebase-JS-SDK nachweislich in Expo Go läuft.
 // TriviaTime_M335 nutzt die eigene Sammlung «scores_m335», damit sich nichts mit anderen Versionen mischt.
 //
-// Nur zwei Aktionen: saveScore und getTopScores (Konzept Kapitel 5).
+// Kern: saveScore und getTopScores (Konzept Kapitel 5); dazu getOnlineRank für die Resultat-Anzeige.
 // Online landen nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum.
 
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { firebaseConfig } from '../config/firebaseConfig.js';
 import { QuizApiError, TIMEOUT_MS } from './quizApi.js';
+import { rankInList } from './leaderboard.js';
 
 export const COLLECTION = 'scores_m335';
 export const TEST_CATEGORY_ID = 0; // Einträge vom Machbarkeitstest – werden nicht angezeigt
@@ -44,6 +45,7 @@ export function toAppError(err) {
   if (err instanceof QuizApiError) return err;
   if (err?.code === 'unavailable') return new QuizApiError('OFFLINE', err.message);
   if (err?.code === 'permission-denied') return new QuizApiError('INVALID', 'Zugriff verweigert (Regeln)');
+  if (err?.code === 'invalid-argument') return new QuizApiError('INVALID', 'Ungültige Daten');
   return new QuizApiError('SERVER', err?.message ?? 'Unbekannter Fehler');
 }
 
@@ -121,6 +123,29 @@ export async function getTopScores({ categoryName, max = 20 } = {}) {
   } catch (err) {
     throw toAppError(err);
   }
+}
+
+/**
+ * Online-Rang eines gesendeten Scores in seiner Kategorie → { rank, total } oder null.
+ * Wie beim Filter: nur nach Kategorie abfragen und lokal sortieren (kein Firestore-Index nötig).
+ */
+export async function getOnlineRank(entry) {
+  try {
+    const q = query(collection(database(), COLLECTION), where('kategorie', '==', entry.categoryName), limit(500));
+    const snap = await withTimeout(getDocs(q));
+    const sorted = sortTop(
+      snap.docs.map((d) => fromDoc(d.id, d.data())),
+      Infinity
+    );
+    return rankInList(sorted, entry.id);
+  } catch (err) {
+    throw toAppError(err);
+  }
+}
+
+/** Fehler, bei denen erneutes Senden nie hilft (von den Sicherheitsregeln abgelehnt). */
+export function isPermanentError(err) {
+  return err?.code === 'INVALID';
 }
 
 /** Testeinträge ausblenden, nach Punkten sortieren (Gleichstand: früher gespielt zuerst), begrenzen. */

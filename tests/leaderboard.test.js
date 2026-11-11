@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { topScores, rankInCategory, addToHistory, flushQueue, compareScores } from '../src/services/leaderboard.js';
+import { topScores, rankInCategory, rankInList, addToHistory, flushQueue, compareScores } from '../src/services/leaderboard.js';
 
 const e = (id, points, categoryName = 'Science & Nature', date = `2026-11-0${id}`) => ({ id, points, categoryName, date });
 
@@ -60,4 +60,24 @@ test('Warteschlange: Funkloch beim 2. Eintrag → Rest bleibt erhalten', async (
     [2, 3]
   );
   assert.ok(res.error);
+});
+
+test('Warteschlange: abgelehnter Eintrag blockiert nicht, der Rest wird gesendet', async () => {
+  const res = await flushQueue(
+    [e(1, 10), e(2, 9999), e(3, 30)],
+    async (x) => {
+      if (x.points > 600) throw Object.assign(new Error('abgelehnt'), { code: 'INVALID' });
+    },
+    { isPermanent: (err) => err.code === 'INVALID' }
+  );
+  assert.deepEqual(res.sent.map((x) => x.id), [1, 3]);
+  assert.deepEqual(res.dropped.map((x) => x.id), [2]);
+  assert.equal(res.remaining.length, 0);
+  assert.equal(res.error, null);
+});
+
+test('Online-Rang: Position und Anzahl, null wenn nicht gefunden', () => {
+  const sorted = [e(2, 300), e(1, 200), e(3, 100)];
+  assert.deepEqual(rankInList(sorted, 1), { rank: 2, total: 3 });
+  assert.equal(rankInList(sorted, 9), null);
 });

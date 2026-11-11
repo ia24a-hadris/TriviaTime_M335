@@ -3,9 +3,10 @@
 // Wird mit Replace geöffnet → kein Zurück ins beendete Quiz.
 // «Nochmals spielen» → Replace zur Frage · «Startseite» → popToTop · «Bestenliste» → Tab
 // Der Score ist beim Öffnen schon lokal gespeichert (Frage-Screen, saveResult).
-// Online senden mit «wird gesendet» / «offline» folgt in S7.
-import { useCallback, useState } from 'react';
-import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+// S7: Danach wird er online gesendet; der Status zeigt «wird gesendet», «online gespeichert · Rang»
+// oder «offline – lokal gespeichert» mit «Jetzt erneut senden» (Selbstbeschreibungsfähigkeit, Fehlertoleranz).
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -16,6 +17,8 @@ import StateView from '@/components/StateView';
 import { getHistory } from '@/services/storage';
 import { rankInCategory } from '@/services/leaderboard';
 import { praise } from '@/services/quizLogic';
+import { isQueued, syncScores } from '@/services/scoreSync';
+import { getOnlineRank, isOnlineConfigured } from '@/services/onlineScores';
 import { DIFFICULTY_LABEL } from '@/services/quizApi';
 import { answerStyles, colors, fonts, sizes } from '@/theme';
 
@@ -25,6 +28,15 @@ export default function ResultatScreen() {
   const params = useLocalSearchParams();
   const [entry, setEntry] = useState(undefined); // undefined = lädt, null = nicht gefunden
   const [rank, setRank] = useState(null);
+  // Online-Status: unconfigured | sending | sent | offline | rejected
+  const [online, setOnline] = useState({ state: isOnlineConfigured() ? 'sending' : 'unconfigured' });
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,6 +52,29 @@ export default function ResultatScreen() {
       };
     }, [params.resultId])
   );
+
+  const sendNow = useCallback(async (e) => {
+    if (!isOnlineConfigured()) return;
+    setOnline({ state: 'sending' });
+    try {
+      const res = await syncScores();
+      if (!mounted.current) return;
+      if (res.dropped.some((x) => x.id === e.id)) return setOnline({ state: 'rejected' });
+      if (await isQueued(e.id)) return mounted.current && setOnline({ state: 'offline', error: res.error });
+      setOnline({ state: 'sent', rank: null });
+      const r = await getOnlineRank(e).catch(() => null);
+      if (mounted.current) setOnline({ state: 'sent', rank: r });
+    } catch (err) {
+      if (mounted.current) setOnline({ state: 'offline', error: err });
+    }
+  }, []);
+
+  // Einmal senden, sobald das Resultat geladen ist
+  const entryId = entry?.id;
+  useEffect(() => {
+    if (entryId) sendNow(entry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryId, sendNow]);
 
   // Android-Zurück führt zur Startseite statt zurück ins Setup
   useFocusEffect(
@@ -102,18 +137,8 @@ export default function ResultatScreen() {
           </Text>
         </View>
 
-        {/* Status: Ist der Score sicher gespeichert? (Selbstbeschreibungsfähigkeit) */}
-        <View style={styles.status} accessibilityLiveRegion="polite">
-          <View style={styles.statusIcon}>
-            <Ionicons name="checkmark" size={22} color={colors.white} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusTitle}>Gespeichert</Text>
-            <Text style={styles.statusText}>
-              Du bist auf Rang <Text style={{ fontFamily: fonts.black }}>#{rank}</Text> in {entry.categoryName} (auf diesem Handy).
-            </Text>
-          </View>
-        </View>
+        {/* Status: Ist der Score sicher gespeichert – lokal und online? (Selbstbeschreibungsfähigkeit) */}
+        <SaveStatus online={online} rank={rank} categoryName={entry.categoryName} onRetry={() => sendNow(entry)} />
 
         <AppButton title="Nochmals spielen" icon="refresh" onPress={playAgain} />
         <View style={styles.row}>
@@ -124,6 +149,72 @@ export default function ResultatScreen() {
     </ScrollView>
   );
 }
+
+const OFFLINE_TEXT = {
+  OFFLINE: 'Keine Verbindung.',
+  TIMEOUT: 'Die Online-Bestenliste antwortet nicht.',
+};
+
+/** Statuskarte unter dem Resultat: lokal immer gespeichert, online je nach Netz. */
+function SaveStatus({ online, rank, categoryName, onRetry }) {
+  const local = (
+    <>
+      Rang <Text style={{ fontFamily: fonts.black }}>#{rank}</Text> in {categoryName} auf diesem Handy.
+    </>
+  );
+  const variants = {
+    unconfigured: { tone: 'ok', icon: 'checkmark', title: 'Gespeichert', body: <>Du bist auf {local}</> },
+    sending: { tone: 'busy', title: 'Score wird gesendet …', body: <>Lokal schon gespeichert: {local}</> },
+    sent: {
+      tone: 'ok',
+      icon: 'cloud-done-outline',
+      title: 'Online gespeichert',
+      body: online.rank ? (
+        <>
+          Rang <Text style={{ fontFamily: fonts.black }}>#{online.rank.rank}</Text> von {online.rank.total} in {categoryName} online · auf diesem Handy{' '}
+          <Text style={{ fontFamily: fonts.black }}>#{rank}</Text>.
+        </>
+      ) : (
+        <>Du bist in der Online-Bestenliste. {local}</>
+      ),
+    },
+    offline: {
+      tone: 'warn',
+      icon: 'cloud-offline-outline',
+      title: 'Offline – lokal gespeichert',
+      body: `${OFFLINE_TEXT[online.error?.code] ?? 'Die Online-Bestenliste ist gerade nicht erreichbar.'} Dein Score wird automatisch gesendet, sobald du wieder Netz hast.`,
+    },
+    rejected: {
+      tone: 'warn',
+      icon: 'alert-circle-outline',
+      title: 'Nur auf diesem Handy gespeichert',
+      body: 'Die Online-Bestenliste hat diesen Score nicht angenommen.',
+    },
+  };
+  const v = variants[online.state];
+  const tone = tones[v.tone];
+
+  return (
+    <View style={[styles.status, { borderColor: tone.border, backgroundColor: tone.bg }]} accessibilityLiveRegion="polite">
+      <View style={styles.statusRow}>
+        <View style={[styles.statusIcon, { backgroundColor: tone.border }]}>
+          {v.tone === 'busy' ? <ActivityIndicator color={colors.white} /> : <Ionicons name={v.icon} size={22} color={colors.white} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.statusTitle}>{v.title}</Text>
+          <Text style={styles.statusText}>{v.body}</Text>
+        </View>
+      </View>
+      {online.state === 'offline' && <AppButton title="Jetzt erneut senden" icon="refresh" variant="secondary" small onPress={onRetry} />}
+    </View>
+  );
+}
+
+const tones = {
+  ok: { border: colors.correct, bg: '#E7F4EA' },
+  busy: { border: colors.primary, bg: colors.primarySoft },
+  warn: { border: '#B45309', bg: '#FFF4DE' },
+};
 
 /** Ein paar Konfetti-Streifen in den Antwortfarben (reine Dekoration). */
 function Confetti() {
@@ -163,16 +254,8 @@ const styles = StyleSheet.create({
   content: { padding: sizes.screenPadding, gap: sizes.gap * 2 },
   formula: { alignSelf: 'center', backgroundColor: colors.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10 },
   formulaText: { fontFamily: fonts.semiBold, fontSize: 14, color: colors.textMuted, textAlign: 'center' },
-  status: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 16,
-    borderRadius: sizes.radius,
-    borderWidth: 2,
-    borderColor: colors.correct,
-    backgroundColor: '#E7F4EA',
-  },
+  status: { gap: 12, padding: 16, borderRadius: sizes.radius, borderWidth: 2 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   statusIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.correct, alignItems: 'center', justifyContent: 'center' },
   statusTitle: { fontFamily: fonts.black, fontSize: 17, color: colors.text },
   statusText: { fontFamily: fonts.regular, fontSize: 15, color: colors.text, lineHeight: 21 },

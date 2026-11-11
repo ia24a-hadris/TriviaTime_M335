@@ -5,8 +5,9 @@
 // - Zustände: lädt (Platzhalter-Zeilen), kein Netz, leer, Online noch nicht eingerichtet
 // - Herunterziehen zum Aktualisieren
 // Lokal: eigene Resultate aus AsyncStorage (S6). Online: Firebase Firestore, Sammlung scores_m335.
-// Das Senden der eigenen Scores aus der Warteschlange folgt mit S7 (Do 12.11.).
-import { useCallback, useEffect, useState } from 'react';
+// S7: Beim Öffnen und beim Herunterziehen werden wartende Scores zuerst gesendet; solange noch
+// welche warten (z. B. offline), weist ein Hinweis darauf hin.
+import { useCallback, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Screen from '@/components/Screen';
@@ -15,11 +16,13 @@ import SegmentedControl from '@/components/SegmentedControl';
 import SelectField from '@/components/SelectField';
 import StateView from '@/components/StateView';
 import AppButton from '@/components/AppButton';
+import InfoBox from '@/components/InfoBox';
 import Podium from '@/components/Podium';
 import ScoreRow, { ScoreRowSkeleton } from '@/components/ScoreRow';
 import { getHistory, getNickname } from '@/services/storage';
 import { topScores, TOP_LIMIT } from '@/services/leaderboard';
 import { getTopScores, isOnlineConfigured, onlineErrorMessage } from '@/services/onlineScores';
+import { pendingCount, syncScores } from '@/services/scoreSync';
 import { DIFFICULTY_LABEL } from '@/services/quizApi';
 import { colors, sizes, text } from '@/theme';
 
@@ -33,6 +36,7 @@ export default function BestenlisteScreen() {
   const [history, setHistory] = useState([]);
   const [online, setOnline] = useState({ state: 'idle', rows: [], error: null });
   const [refreshing, setRefreshing] = useState(false);
+  const [pending, setPending] = useState(0); // Scores, die noch nicht online sind
 
   // Lokale Daten bei jedem Öffnen des Tabs neu lesen (z. B. nach einer Runde)
   useFocusEffect(
@@ -58,12 +62,30 @@ export default function BestenlisteScreen() {
     }
   }, [category]);
 
-  useEffect(() => {
-    if (mode === 'online') loadOnline();
-  }, [mode, loadOnline]);
+  /** Wartende Scores senden; wenn etwas neu online ist, die Liste neu laden. */
+  const sync = useCallback(async () => {
+    const res = await syncScores().catch(() => null);
+    setPending(await pendingCount());
+    return res?.sent.length > 0;
+  }, []);
+
+  // Beim Öffnen des Tabs (und bei Wechsel Modus/Kategorie): Liste sofort laden, parallel senden
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      if (mode === 'online') loadOnline();
+      sync().then((changed) => {
+        if (active && changed && mode === 'online') loadOnline();
+      });
+      return () => {
+        active = false;
+      };
+    }, [mode, loadOnline, sync])
+  );
 
   async function refresh() {
     setRefreshing(true);
+    await sync();
     const [h] = await Promise.all([getHistory(), mode === 'online' ? loadOnline() : null]);
     setHistory(h);
     setRefreshing(false);
@@ -106,6 +128,13 @@ export default function BestenlisteScreen() {
         onChange={setMode}
       />
       <SelectField label="Kategorie" value={category} options={categoryOptions} onChange={(c) => setCategory(c.id)} />
+
+      {mode === 'online' && pending > 0 && online.state !== 'unconfigured' && (
+        <InfoBox icon="cloud-upload-outline">
+          {pending === 1 ? '1 Score von dir wartet' : `${pending} Scores von dir warten`} noch auf das Senden. Das passiert automatisch, sobald du
+          Netz hast – oder zieh die Liste nach unten.
+        </InfoBox>
+      )}
 
       {mode === 'online' && online.state === 'unconfigured' && (
         <StateView

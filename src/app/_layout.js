@@ -1,8 +1,9 @@
-// Root-Layout: lädt die Schrift Nunito und definiert den obersten Stack.
+// Root-Layout: lädt die Schrift Nunito, sendet wartende Scores (S7) und definiert den obersten Stack.
 // Darin liegen die Tabs (Spielen, Bestenliste) und der Test-Screen für die UI-Bausteine.
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import {
   useFonts,
   Nunito_400Regular,
@@ -11,6 +12,7 @@ import {
   Nunito_800ExtraBold,
   Nunito_900Black,
 } from '@expo-google-fonts/nunito';
+import { syncScores } from '@/services/scoreSync';
 import { colors, fonts } from '@/theme';
 
 export default function RootLayout() {
@@ -21,6 +23,15 @@ export default function RootLayout() {
     Nunito_800ExtraBold,
     Nunito_900Black,
   });
+
+  // S7: Scores aus der Warteschlange senden – beim Start und wenn die App wieder aktiv wird
+  useEffect(() => {
+    syncScores().catch(() => {});
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncScores().catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
 
   // Solange die Schrift lädt, kurz einen Ladeindikator zeigen (bei Fehler mit Systemschrift weiter)
   if (!loaded && !error) {

@@ -39,17 +39,33 @@ export function makeId(date = new Date(), random = Math.random) {
  * Warteschlange abarbeiten: jeden Eintrag mit send() verschicken.
  * Erfolgreich gesendete fallen raus; beim ersten Fehler (z. B. Funkloch) wird abgebrochen,
  * der Rest bleibt in der Warteschlange und wird später nochmals versucht.
- * Rückgabe: { sent: [...], remaining: [...], error }
+ * Ausnahme: Fehler, bei denen ein erneuter Versuch nie klappt (isPermanent, z. B. von den
+ * Sicherheitsregeln abgelehnt), blockieren die Warteschlange nicht – der Eintrag fällt raus (dropped).
+ * Rückgabe: { sent: [...], dropped: [...], remaining: [...], error }
  */
-export async function flushQueue(queue, send) {
+export async function flushQueue(queue, send, { isPermanent = () => false } = {}) {
   const sent = [];
+  const dropped = [];
   for (let i = 0; i < queue.length; i++) {
     try {
       await send(queue[i]);
       sent.push(queue[i]);
     } catch (error) {
-      return { sent, remaining: queue.slice(i), error };
+      if (isPermanent(error)) {
+        dropped.push(queue[i]);
+        continue;
+      }
+      return { sent, dropped, remaining: queue.slice(i), error };
     }
   }
-  return { sent, remaining: [], error: null };
+  return { sent, dropped, remaining: [], error: null };
+}
+
+/**
+ * Online-Rang eines Eintrags in seiner Kategorie (Liste muss schon sortiert sein).
+ * Rückgabe: { rank, total } oder null, wenn der Eintrag nicht in der Liste ist.
+ */
+export function rankInList(sortedList, id) {
+  const pos = sortedList.findIndex((e) => e.id === id);
+  return pos === -1 ? null : { rank: pos + 1, total: sortedList.length };
 }
