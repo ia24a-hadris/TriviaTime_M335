@@ -41,6 +41,13 @@ npm run test:online
 Erwartet: «ERGEBNIS: Machbarkeitstest bestanden ✓». Der Testeintrag hat `kategorieId 0` und wird in der App nicht angezeigt
 (löschen ist durch die Regeln gesperrt; bei Bedarf in der Konsole von Hand löschen).
 
+## Ergebnis (11.11.2026)
+
+- Regeln in der Konsole veröffentlicht (`scores` unverändert, `scores_m335` neu).
+- `npm run test:online`: **bestanden** – Eintrag geschrieben und wieder gelesen in 470 ms.
+- Gegenprobe: Punkte 9999, Nickname «ab» und Anzahl 50 werden von den Regeln **abgelehnt**.
+- Die alte Sammlung `scores` ist weiterhin lesbar; die Bestenliste der App lädt online (noch leer, Senden folgt mit S7).
+
 ## Datenschutz
 Online gespeichert werden nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum (Konzept Kapitel 10).
 Kein Login, keine E-Mail. Der Firebase-`apiKey` ist bei Web-Apps öffentlich; geschützt wird über die Sicherheitsregeln.

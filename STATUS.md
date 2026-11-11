@@ -3,7 +3,7 @@
 | Nr | Paket | Status | Bemerkung |
 |----|-------|--------|-----------|
 | S1 | Projekt-Setup | fertig | Repo auf GitHub. **Offen:** Start in Expo Go auf beiden Handys, Tanushree klont und pusht |
-| S2 | Machbarkeitstest Online-Bestenliste | in Arbeit | Entscheid geändert auf **Firebase Firestore** (bestehendes Projekt triviatime-40c70, eigene Sammlung `scores_m335`). Service + Test-Skript fertig. **Offen:** Regeln aus `firestore.rules` in der Konsole veröffentlichen, dann `npm run test:online` |
+| S2 | Machbarkeitstest Online-Bestenliste | fertig | Entscheid **Firebase Firestore** (bestehendes Projekt triviatime-40c70, eigene Sammlung `scores_m335`). Regeln veröffentlicht; Machbarkeitstest am 11.11. bestanden (schreiben + lesen in 470 ms); ungültige Einträge werden abgelehnt |
 | T1 | Theme & UI-Bausteine | fertig | Test-Screen `/bausteine` |
 | S3 | Navigation | fertig | Android-Zurück auf echtem Android-Handy noch prüfen |
 | T2 | Home + Nickname | fertig | |
