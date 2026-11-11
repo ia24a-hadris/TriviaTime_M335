@@ -13,6 +13,7 @@ export default function AppButton({
   onPress,
   variant = 'primary',
   icon,
+  iconRight,
   disabled = false,
   loading = false,
   small = false,
@@ -47,6 +48,7 @@ export default function AppButton({
         <Text style={[text.button, { color: isDisabled ? colors.textMuted : v.textColor }]}>
           {title}
         </Text>
+        {iconRight && !loading && <Ionicons name={iconRight} size={20} color={v.textColor} />}
       </View>
     </Pressable>
   );
