@@ -13,7 +13,14 @@ import { fetchJson } from './quizApi.js';
 
 const TABLE = 'scores';
 
-export function getOnlineConfig(env = process.env) {
+// Wichtig: Expo setzt EXPO_PUBLIC_-Variablen nur ein, wenn sie direkt als
+// process.env.EXPO_PUBLIC_… im Code stehen – darum hier ausgeschrieben.
+const APP_ENV = {
+  EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+  EXPO_PUBLIC_SUPABASE_KEY: process.env.EXPO_PUBLIC_SUPABASE_KEY,
+};
+
+export function getOnlineConfig(env = APP_ENV) {
   const url = env.EXPO_PUBLIC_SUPABASE_URL;
   const key = env.EXPO_PUBLIC_SUPABASE_KEY;
   return url && key ? { url: url.replace(/\/$/, ''), key } : null;
