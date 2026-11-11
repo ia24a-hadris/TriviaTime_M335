@@ -49,14 +49,24 @@ export default function HomeScreen() {
     setModalOpen(false);
   }
 
+  // Schnellstart: letzte Einstellungen aus dem Setup, sonst die des letzten gespielten Quiz
+  const quick =
+    lastSettings ??
+    (history[0] && {
+      categoryId: history[0].categoryId,
+      categoryName: history[0].categoryName,
+      difficulty: history[0].difficulty,
+      amount: history[0].amount,
+    });
+
   function quickStart() {
     router.push({
       pathname: '/frage',
       params: {
-        categoryId: String(lastSettings.categoryId),
-        categoryName: lastSettings.categoryName,
-        difficulty: lastSettings.difficulty,
-        amount: String(lastSettings.amount),
+        categoryId: String(quick.categoryId),
+        categoryName: quick.categoryName,
+        difficulty: quick.difficulty,
+        amount: String(quick.amount),
       },
     });
   }
@@ -105,12 +115,12 @@ export default function HomeScreen() {
             icon="refresh"
             variant="secondary"
             onPress={quickStart}
-            disabled={!lastSettings}
+            disabled={!quick}
             accessibilityHint="Startet ein Quiz mit den zuletzt gewählten Einstellungen"
           />
           <Text style={[text.help, styles.center]}>
-            {lastSettings
-              ? `${lastSettings.categoryName} · ${DIFFICULTY_LABEL[lastSettings.difficulty]} · ${lastSettings.amount} Fragen`
+            {quick
+              ? `${quick.categoryName} · ${DIFFICULTY_LABEL[quick.difficulty]} · ${quick.amount} Fragen`
               : 'Schnellstart ist nach deinem ersten Quiz verfügbar.'}
           </Text>
         </>

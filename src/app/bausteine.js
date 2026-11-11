@@ -68,8 +68,7 @@ export default function BausteineScreen() {
             { value: 'hard', label: 'Schwer' },
           ]}
         />
-        <Stepper label="Anzahl" value={num} onChange={setNum} min={5} max={20} />
-        <InfoBox>Die Fragen kommen live aus der Open Trivia DB und sind auf Englisch.</InfoBox>
+        <Stepper label="Anzahl" value={num} onChange={setNum} min={5} max={20} />        <InfoBox>Die Fragen kommen live aus der Open Trivia DB und sind auf Englisch.</InfoBox>
       </Section>
 
       <Section title="Antwortfelder (64 dp, 10 dp Abstand)" dark>

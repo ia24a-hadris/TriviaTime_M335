@@ -14,10 +14,14 @@ export default function Stepper({ value, onChange, min, max, hasError, label }) 
   const canMinus = valid ? num > min : true;
   const canPlus = valid ? num < max : true;
 
+  // onChange bekommt eine Funktion (wie ein useState-Setter), damit auch schnelle
+  // Mehrfach-Taps jeweils vom aktuellsten Wert aus rechnen.
   function step(delta) {
-    const base = valid ? num : min;
-    const next = Math.min(max, Math.max(min, base + delta));
-    onChange(String(next));
+    onChange((prev) => {
+      const n = parseInt(prev, 10);
+      const base = Number.isNaN(n) ? min : n;
+      return String(Math.min(max, Math.max(min, base + delta)));
+    });
   }
 
   return (
