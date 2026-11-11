@@ -4,7 +4,8 @@
 // - Siegertreppchen für die Top 3, eigene Zeile «Du» hervorgehoben (Erwartungskonformität)
 // - Zustände: lädt (Platzhalter-Zeilen), kein Netz, leer, Online noch nicht eingerichtet
 // - Herunterziehen zum Aktualisieren
-// Lokal: eigene Resultate aus AsyncStorage (S6). Online: Supabase (S7, Do 12.11.).
+// Lokal: eigene Resultate aus AsyncStorage (S6). Online: Firebase Firestore, Sammlung scores_m335.
+// Das Senden der eigenen Scores aus der Warteschlange folgt mit S7 (Do 12.11.).
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -18,8 +19,8 @@ import Podium from '@/components/Podium';
 import ScoreRow, { ScoreRowSkeleton } from '@/components/ScoreRow';
 import { getHistory, getNickname } from '@/services/storage';
 import { topScores, TOP_LIMIT } from '@/services/leaderboard';
-import { getTopScores, isOnlineConfigured } from '@/services/onlineScores';
-import { DIFFICULTY_LABEL, errorMessage } from '@/services/quizApi';
+import { getTopScores, isOnlineConfigured, onlineErrorMessage } from '@/services/onlineScores';
+import { DIFFICULTY_LABEL } from '@/services/quizApi';
 import { colors, sizes, text } from '@/theme';
 
 const ALL = 'all';
@@ -50,10 +51,10 @@ export default function BestenlisteScreen() {
     }
     setOnline((o) => ({ ...o, state: 'loading' }));
     try {
-      const rows = await getTopScores({ category: category === ALL ? undefined : category });
+      const rows = await getTopScores({ categoryName: category === ALL ? undefined : category });
       setOnline({ state: 'ok', rows, error: null });
     } catch (err) {
-      setOnline({ state: 'error', rows: [], error: errorMessage(err) });
+      setOnline({ state: 'error', rows: [], error: onlineErrorMessage(err) });
     }
   }, [category]);
 
@@ -84,11 +85,11 @@ export default function BestenlisteScreen() {
           meta: `${e.categoryName} · ${DIFFICULTY_LABEL[e.difficulty]} · ${shortDate(e.date)}`,
           own: false,
         }))
-      : online.rows.map((e, i) => ({
-          key: `${e.nickname}-${e.created_at}-${i}`,
+      : online.rows.map((e) => ({
+          key: e.id,
           nickname: e.nickname,
           points: e.points,
-          meta: `${e.category ?? ''} · ${shortDate(e.created_at)}`,
+          meta: `${e.categoryName ?? ''} · ${shortDate(e.date)}`,
           own: !!nickname && e.nickname === nickname,
         }));
 

@@ -1,57 +1,132 @@
-// Online-Bestenliste (Erweiterung, Risiko R1) – Supabase über die REST-Schnittstelle.
+// Online-Bestenliste (Erweiterung, Risiko R1) – Firebase Firestore.
 //
-// Entscheid S2: Supabase statt Firebase, weil
-//  - es nur zwei einfache HTTP-Anfragen braucht (fetch), kein zusätzliches SDK und kein natives Modul
-//    → läuft garantiert in Expo Go,
-//  - die Tabelle «scores» mit SQL und Zugriffsregeln (Row Level Security) klar definiert ist.
+// Entscheid S2: Firebase, weil das Team schon ein Firebase-Projekt (triviatime-40c70) mit
+// Sicherheitsregeln hat und das Firebase-JS-SDK nachweislich in Expo Go läuft.
+// TriviaTime_M335 nutzt die eigene Sammlung «scores_m335», damit sich nichts mit anderen Versionen mischt.
 //
 // Nur zwei Aktionen: saveScore und getTopScores (Konzept Kapitel 5).
-// Die Zugangsdaten kommen aus .env.local (EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_KEY)
-// und werden nicht ins Repo eingecheckt.
+// Online landen nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum.
 
-import { fetchJson } from './quizApi.js';
+import { getApps, initializeApp } from 'firebase/app';
+import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
+import { firebaseConfig } from '../config/firebaseConfig.js';
+import { QuizApiError, TIMEOUT_MS } from './quizApi.js';
 
-const TABLE = 'scores';
+export const COLLECTION = 'scores_m335';
+export const TEST_CATEGORY_ID = 0; // Einträge vom Machbarkeitstest – werden nicht angezeigt
 
-// Wichtig: Expo setzt EXPO_PUBLIC_-Variablen nur ein, wenn sie direkt als
-// process.env.EXPO_PUBLIC_… im Code stehen – darum hier ausgeschrieben.
-const APP_ENV = {
-  EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_KEY: process.env.EXPO_PUBLIC_SUPABASE_KEY,
-};
+let db = null;
 
-export function getOnlineConfig(env = APP_ENV) {
-  const url = env.EXPO_PUBLIC_SUPABASE_URL;
-  const key = env.EXPO_PUBLIC_SUPABASE_KEY;
-  return url && key ? { url: url.replace(/\/$/, ''), key } : null;
+export function isOnlineConfigured(config = firebaseConfig) {
+  return config != null && !!config.projectId;
 }
 
-export function isOnlineConfigured(env) {
-  return getOnlineConfig(env) !== null;
+function database() {
+  if (!isOnlineConfigured()) throw new Error('Online-Bestenliste ist nicht konfiguriert.');
+  if (!db) {
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  }
+  return db;
 }
 
-function headers(key) {
-  return { apikey: key, 'Content-Type': 'application/json' };
-}
-
-/** Score online speichern: { nickname, points, category } → gespeicherter Eintrag */
-export async function saveScore({ nickname, points, category }, { config = getOnlineConfig(), fetchImpl = globalThis.fetch } = {}) {
-  if (!config) throw new Error('Online-Bestenliste ist nicht konfiguriert.');
-  const res = await fetchImpl(`${config.url}/rest/v1/${TABLE}`, {
-    method: 'POST',
-    headers: { ...headers(config.key), Prefer: 'return=representation' },
-    body: JSON.stringify({ nickname, points, category }),
+/** Firestore wartet ohne Netz sehr lange – darum ein eigenes Zeitlimit von 10 s. */
+export function withTimeout(promise, ms = TIMEOUT_MS) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new QuizApiError('TIMEOUT', 'Zeitüberschreitung')), ms);
   });
-  if (!res.ok) throw new Error(`Speichern fehlgeschlagen (HTTP ${res.status})`);
-  const [row] = await res.json();
-  return row;
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** Top 20 laden, optional gefiltert nach Kategorie. */
-export async function getTopScores({ limit = 20, category } = {}, { config = getOnlineConfig(), fetchImpl = globalThis.fetch } = {}) {
-  if (!config) throw new Error('Online-Bestenliste ist nicht konfiguriert.');
-  let url = `${config.url}/rest/v1/${TABLE}?select=nickname,points,category,created_at&order=points.desc,created_at.asc&limit=${limit}`;
-  if (category) url += `&category=eq.${encodeURIComponent(category)}`;
-  // fetchJson bringt Timeout (10 s) und die Unterscheidung «kein Netz» mit
-  return fetchJson(url, { fetchImpl: (u, opts) => fetchImpl(u, { ...opts, headers: headers(config.key) }) });
+/** Firebase-Fehler in unsere Codes übersetzen, damit die Screens die passende Meldung zeigen. */
+export function toAppError(err) {
+  if (err instanceof QuizApiError) return err;
+  if (err?.code === 'unavailable') return new QuizApiError('OFFLINE', err.message);
+  if (err?.code === 'permission-denied') return new QuizApiError('INVALID', 'Zugriff verweigert (Regeln)');
+  return new QuizApiError('SERVER', err?.message ?? 'Unbekannter Fehler');
+}
+
+/** Deutsche Meldung für die Bestenliste (Ursache + Lösung, ohne Fehlercodes). */
+export function onlineErrorMessage(err) {
+  switch (err?.code) {
+    case 'OFFLINE':
+      return 'Keine Verbindung. Prüfe WLAN oder mobile Daten und versuche es erneut.';
+    case 'TIMEOUT':
+      return 'Die Online-Bestenliste antwortet nicht (über 10 Sekunden). Versuche es gleich nochmals.';
+    default:
+      return 'Die Online-Bestenliste ist gerade nicht verfügbar. Deine Resultate siehst du unter «Lokal».';
+  }
+}
+
+/** Lokaler Eintrag → Firestore-Dokument. Feldnamen müssen zu den Sicherheitsregeln passen. */
+export function toDoc(entry) {
+  return {
+    nickname: entry.nickname,
+    punkte: entry.points,
+    kategorie: entry.categoryName,
+    kategorieId: entry.categoryId,
+    schwierigkeit: entry.difficulty,
+    anzahl: entry.amount,
+    richtige: entry.correct,
+    datum: entry.date,
+  };
+}
+
+/** Firestore-Dokument → Format der App */
+export function fromDoc(id, d) {
+  return {
+    id,
+    nickname: d.nickname,
+    points: d.punkte,
+    categoryName: d.kategorie,
+    categoryId: d.kategorieId,
+    difficulty: d.schwierigkeit,
+    amount: d.anzahl,
+    correct: d.richtige,
+    date: d.datum,
+  };
+}
+
+/**
+ * Score online speichern. Die lokale id wird als Dokument-ID verwendet:
+ * wird derselbe Score zweimal gesendet (z. B. aus der Warteschlange), entsteht kein Duplikat.
+ */
+export async function saveScore(entry) {
+  try {
+    const ref = doc(database(), COLLECTION, entry.id);
+    const existing = await withTimeout(getDoc(ref));
+    if (existing.exists()) return;
+    await withTimeout(setDoc(ref, toDoc(entry)));
+  } catch (err) {
+    throw toAppError(err);
+  }
+}
+
+/**
+ * Top 20 laden, optional nur eine Kategorie (Name).
+ * Mit Filter wird lokal sortiert, damit Firestore keinen zusätzlichen Index braucht.
+ */
+export async function getTopScores({ categoryName, max = 20 } = {}) {
+  try {
+    const scores = collection(database(), COLLECTION);
+    const q = categoryName
+      ? query(scores, where('kategorie', '==', categoryName), limit(200))
+      : query(scores, orderBy('punkte', 'desc'), limit(max + 10));
+    const snap = await withTimeout(getDocs(q));
+    return sortTop(
+      snap.docs.map((d) => fromDoc(d.id, d.data())),
+      max
+    );
+  } catch (err) {
+    throw toAppError(err);
+  }
+}
+
+/** Testeinträge ausblenden, nach Punkten sortieren (Gleichstand: früher gespielt zuerst), begrenzen. */
+export function sortTop(list, max = 20) {
+  return list
+    .filter((e) => e.categoryId !== TEST_CATEGORY_ID)
+    .sort((a, b) => b.points - a.points || String(a.date).localeCompare(String(b.date)))
+    .slice(0, max);
 }

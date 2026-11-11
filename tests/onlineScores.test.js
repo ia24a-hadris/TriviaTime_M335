@@ -1,45 +1,62 @@
-// Tests für den Online-Bestenlisten-Service mit simuliertem Supabase-Server.
+// Tests für den Online-Bestenlisten-Service (Firebase) – ohne echte Verbindung:
+// geprüft werden Umwandlung, Sortierung, Zeitlimit und Fehler-Übersetzung.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveScore, getTopScores, isOnlineConfigured } from '../src/services/onlineScores.js';
+import { toDoc, fromDoc, sortTop, withTimeout, toAppError, isOnlineConfigured, COLLECTION } from '../src/services/onlineScores.js';
 
-const config = { url: 'https://demo.supabase.co', key: 'test-key' };
+const entry = {
+  id: 'abc',
+  nickname: 'Nikola',
+  points: 160,
+  categoryName: 'Science & Nature',
+  categoryId: 17,
+  difficulty: 'medium',
+  amount: 10,
+  correct: 8,
+  date: '2026-11-11T10:00:00.000Z',
+  pointsPerCorrect: 20, // darf NICHT online landen
+};
 
-test('ohne Zugangsdaten gilt die Online-Bestenliste als nicht konfiguriert', () => {
-  assert.equal(isOnlineConfigured({}), false);
-  assert.equal(isOnlineConfigured({ EXPO_PUBLIC_SUPABASE_URL: 'x', EXPO_PUBLIC_SUPABASE_KEY: 'y' }), true);
+test('eigene Sammlung für TriviaTime_M335', () => {
+  assert.equal(COLLECTION, 'scores_m335');
 });
 
-test('saveScore schickt POST mit Key und nur den erlaubten Feldern', async () => {
-  let request;
-  const fetchImpl = async (url, opts) => {
-    request = { url, ...opts };
-    return { ok: true, status: 201, json: async () => [{ id: 1, ...JSON.parse(opts.body) }] };
-  };
-  const row = await saveScore({ nickname: 'Nikola', points: 160, category: 'Science & Nature' }, { config, fetchImpl });
-  assert.equal(request.method, 'POST');
-  assert.equal(request.url, 'https://demo.supabase.co/rest/v1/scores');
-  assert.equal(request.headers.apikey, 'test-key');
-  assert.deepEqual(Object.keys(JSON.parse(request.body)), ['nickname', 'points', 'category']);
-  assert.equal(row.id, 1);
+test('ohne Konfiguration gilt Online als nicht eingerichtet', () => {
+  assert.equal(isOnlineConfigured(null), false);
+  assert.equal(isOnlineConfigured({ projectId: 'x' }), true);
 });
 
-test('getTopScores lädt Top 20 sortiert nach Punkten, optional nach Kategorie', async () => {
-  let calledUrl;
-  const fetchImpl = async (url) => {
-    calledUrl = url;
-    return { ok: true, status: 200, json: async () => [{ nickname: 'A', points: 300 }] };
-  };
-  const rows = await getTopScores({ category: 'Science & Nature' }, { config, fetchImpl });
-  assert.match(calledUrl, /order=points\.desc/);
-  assert.match(calledUrl, /limit=20/);
-  assert.match(calledUrl, /category=eq\.Science%20%26%20Nature/);
-  assert.equal(rows[0].points, 300);
+test('Dokument hat genau die Felder, die die Sicherheitsregeln erlauben', () => {
+  const d = toDoc(entry);
+  assert.deepEqual(Object.keys(d).sort(), ['anzahl', 'datum', 'kategorie', 'kategorieId', 'nickname', 'punkte', 'richtige', 'schwierigkeit']);
+  assert.equal(d.punkte, 160);
+  assert.ok(Number.isInteger(d.punkte) && Number.isInteger(d.anzahl)); // Regeln verlangen int
 });
 
-test('kein Netz beim Laden → OFFLINE', async () => {
-  const fetchImpl = async () => {
-    throw new TypeError('Network request failed');
-  };
-  await assert.rejects(getTopScores({}, { config, fetchImpl }), { code: 'OFFLINE' });
+test('Hin- und Rückweg ergibt wieder denselben Eintrag', () => {
+  const { pointsPerCorrect, ...expected } = entry;
+  assert.deepEqual(fromDoc('abc', toDoc(entry)), expected);
+});
+
+test('Top-Liste: sortiert, Testeinträge ausgeblendet, begrenzt', () => {
+  const list = [
+    { id: 1, points: 100, categoryId: 9, date: 'b' },
+    { id: 2, points: 300, categoryId: 9, date: 'b' },
+    { id: 3, points: 999, categoryId: 0, date: 'a' }, // Machbarkeitstest
+    { id: 4, points: 300, categoryId: 9, date: 'a' },
+  ];
+  assert.deepEqual(
+    sortTop(list).map((e) => e.id),
+    [4, 2, 1]
+  );
+  assert.equal(sortTop(list, 1).length, 1);
+});
+
+test('Zeitlimit: keine Antwort → TIMEOUT', async () => {
+  await assert.rejects(withTimeout(new Promise(() => {}), 30), { code: 'TIMEOUT' });
+});
+
+test('Firebase-Fehler werden übersetzt', () => {
+  assert.equal(toAppError({ code: 'unavailable' }).code, 'OFFLINE');
+  assert.equal(toAppError({ code: 'permission-denied' }).code, 'INVALID');
 });

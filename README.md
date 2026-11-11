@@ -20,7 +20,7 @@ Im Browser: `npx expo start --web`.
 
 ```bash
 npm test             # Unit-Tests: Validierung, Quiz-API, Online-Bestenliste
-npm run test:online  # Machbarkeitstest Supabase (braucht .env.local, siehe docs/)
+npm run test:online  # Machbarkeitstest Firebase: Eintrag in scores_m335 schreiben und lesen (siehe docs/)
 ```
 
 ## Aufbau

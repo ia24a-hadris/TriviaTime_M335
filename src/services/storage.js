@@ -73,14 +73,18 @@ export async function getQueue() {
   return readJson(KEYS.queue, []);
 }
 
-/** Nur die Daten, die online landen dürfen: Nickname, Punkte, Kategorie, Datum. */
+/** Nur die Daten, die online landen dürfen (siehe onlineScores.toDoc). */
 export async function enqueueScore(entry) {
   const queue = await getQueue();
   const item = {
     id: entry.id,
     nickname: entry.nickname,
     points: entry.points,
-    category: entry.categoryName,
+    categoryName: entry.categoryName,
+    categoryId: entry.categoryId,
+    difficulty: entry.difficulty,
+    amount: entry.amount,
+    correct: entry.correct,
     date: entry.date,
   };
   await writeJson(KEYS.queue, [...queue, item].slice(-QUEUE_LIMIT));

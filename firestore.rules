@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Sicherheitsregeln für die Online-Bestenliste (Konzept Kapitel 10).
+// In der Firebase-Konsole einfügen: Firestore Database → Regeln → alles ersetzen → Veröffentlichen.
+//
+// - «scores»      = Sammlung der früheren TriviaTime-Version (bleibt unverändert erhalten)
+// - «scores_m335» = Sammlung von TriviaTime_M335
+//
+// Für beide gilt:
+// - Lesen: alle (die Bestenliste ist öffentlich)
+// - Schreiben: nur NEUE Einträge mit gültigen Werten (Nickname 3–15 Zeichen, Punkte 0–600, Anzahl 5–20)
+// - Ändern und Löschen: niemand (so kann man fremde Scores nicht verändern)
+// Ohne Login lässt sich Schummeln nicht ganz verhindern – für ein Schulprojekt bewusst so in Kauf genommen.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function gueltigerScore() {
+      return request.resource.data.keys().hasOnly(
+               ['nickname', 'punkte', 'kategorie', 'kategorieId', 'schwierigkeit', 'anzahl', 'richtige', 'datum'])
+          && request.resource.data.nickname is string
+          && request.resource.data.nickname.size() >= 3
+          && request.resource.data.nickname.size() <= 15
+          && request.resource.data.punkte is int
+          && request.resource.data.punkte >= 0
+          && request.resource.data.punkte <= 600
+          && request.resource.data.anzahl is int
+          && request.resource.data.anzahl >= 5
+          && request.resource.data.anzahl <= 20;
+    }
+
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow create: if gueltigerScore();
+      allow update, delete: if false;
+    }
+
+    match /scores_m335/{scoreId} {
+      allow read: if true;
+      allow create: if gueltigerScore();
+      allow update, delete: if false;
+    }
+  }
+}

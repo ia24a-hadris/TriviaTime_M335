@@ -1,53 +1,46 @@
 # S2 · Machbarkeitstest Online-Bestenliste
 
-## Entscheid: Supabase
+## Entscheid: Firebase Firestore
 
-| Kriterium | Supabase | Firebase Firestore |
-|-----------|----------|--------------------|
-| Läuft in Expo Go | Ja, nur `fetch` (REST), kein SDK nötig | JS-SDK läuft, ist aber gross und braucht mehr Konfiguration |
-| Aufwand für 2 Aktionen (`saveScore`, `getTopScores`) | 2 HTTP-Anfragen | SDK, Collection, Query, Index |
-| Sortieren + Top 20 | `order=points.desc&limit=20` in der URL | braucht ggf. zusammengesetzten Index |
-| Zugriffsregeln ohne Login | Row Level Security (SQL) | Security Rules |
+Ursprünglich war Supabase vorgesehen. Entschieden haben wir uns für **Firebase Firestore**, weil:
 
-**Entscheid:** Supabase über die REST-Schnittstelle. Der Code liegt in `src/services/onlineScores.js`.
+- das Team schon ein Firebase-Projekt **triviatime-40c70** mit Sicherheitsregeln hat (aus einer früheren Version),
+- das Firebase-JS-SDK dort nachweislich in **Expo Go** lief (kein natives Modul nötig),
+- so kein zusätzliches Konto und keine neue Datenbank eingerichtet werden müssen.
+
+**Eigene Sammlung:** TriviaTime_M335 schreibt in `scores_m335`. Die Sammlung `scores` der früheren Version bleibt
+unverändert; so mischen sich die Bestenlisten nicht (wichtig für die Demo).
+
+Code: `src/services/onlineScores.js` (nur `saveScore` und `getTopScores`), Konfiguration: `src/config/firebaseConfig.js`.
 Plan B bleibt gültig: Klappt es bis Do 12.11., 12:00 nicht, bleibt die Bestenliste lokal (AsyncStorage).
 
-## Einrichten (einmalig, ca. 10 Min.)
+## Gespeicherte Felder (Dokument in `scores_m335`)
 
-1. Auf supabase.com ein kostenloses Projekt «triviatime» anlegen (eigenes Konto).
-2. Im SQL-Editor ausführen:
+| Feld | Beispiel | Bemerkung |
+|------|----------|-----------|
+| nickname | QuizMaus88 | 3–15 Zeichen, frei gewählt, kein Login |
+| punkte | 160 | ganze Zahl 0–600 |
+| kategorie / kategorieId | Science & Nature / 17 | für den Kategorie-Filter |
+| schwierigkeit | medium | easy / medium / hard |
+| anzahl / richtige | 10 / 8 | Anzahl 5–20 |
+| datum | 2026-11-11T10:00:00Z | ISO-Datum |
 
-```sql
-create table public.scores (
-  id         bigint generated always as identity primary key,
-  nickname   text not null check (char_length(nickname) between 3 and 15),
-  points     integer not null check (points between 0 and 600),
-  category   text,
-  created_at timestamptz not null default now()
-);
+Dokument-ID = lokale ID des Resultats → doppeltes Senden aus der Warteschlange erzeugt kein Duplikat.
 
-alter table public.scores enable row level security;
+## Einrichten (einmalig)
 
--- ohne Login: alle dürfen lesen und neue Einträge anlegen, aber nichts ändern oder löschen
-create policy "scores lesen"    on public.scores for select to anon using (true);
-create policy "scores eintragen" on public.scores for insert to anon with check (true);
-```
-
-3. Unter *Project Settings → API* die Projekt-URL und den Publishable Key (bzw. «anon public» Key) kopieren.
-4. Im Projektordner die Datei `.env.local` anlegen (wird nicht committet):
-
-```
-EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-EXPO_PUBLIC_SUPABASE_KEY=dein-publishable-key
-```
-
-5. Test ausführen:
+1. Firebase-Konsole → Projekt **triviatime-40c70** → *Firestore Database* → *Regeln*.
+2. Den ganzen Inhalt von `firestore.rules` (im Projektordner) einfügen → **Veröffentlichen**.
+   Die Regeln enthalten weiterhin die alte Sammlung `scores` und neu `scores_m335`.
+3. Test ausführen:
 
 ```
 npm run test:online
 ```
 
-Erwartet: «ERGEBNIS: Machbarkeitstest bestanden ✓». Danach den Test-Eintrag «TestS2» im Table Editor löschen.
+Erwartet: «ERGEBNIS: Machbarkeitstest bestanden ✓». Der Testeintrag hat `kategorieId 0` und wird in der App nicht angezeigt
+(löschen ist durch die Regeln gesperrt; bei Bedarf in der Konsole von Hand löschen).
 
 ## Datenschutz
-Online gespeichert werden nur Nickname, Punkte, Kategorie und Datum (Konzept Kapitel 10). Kein Login, keine E-Mail.
+Online gespeichert werden nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum (Konzept Kapitel 10).
+Kein Login, keine E-Mail. Der Firebase-`apiKey` ist bei Web-Apps öffentlich; geschützt wird über die Sicherheitsregeln.
