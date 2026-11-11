@@ -19,7 +19,7 @@ Im Browser: `npx expo start --web`.
 ## Tests
 
 ```bash
-npm test             # Unit-Tests: Validierung, Quiz-API, Online-Bestenliste
+npm test             # Unit-Tests: Validierung, Quiz-API, Quiz-Logik, Bestenliste, Online-Service
 npm run test:online  # Machbarkeitstest Firebase: Eintrag in scores_m335 schreiben und lesen (siehe docs/)
 ```
 
@@ -34,10 +34,11 @@ src/
     (tabs)/bestenliste.js
     bausteine.js          Test-Screen aller UI-Bausteine (lange auf «Trivia Time» drücken)
   components/             UI-Bausteine (Button, Karte, Antwortfeld, Formularfelder, Zustände, Modals)
-  services/               Logik ohne UI: quizApi, storage (AsyncStorage), validation, onlineScores
+  services/               Logik ohne UI: quizApi, quizLogic, storage (AsyncStorage), validation,
+                          leaderboard, onlineScores (Firebase), scoreSync (Warteschlange senden)
   theme/                  Farben, Schrift, Masse gemäss Konzept
 tests/                    Unit-Tests (node:test)
-docs/                     Entscheide und Anleitungen
+docs/                     Machbarkeitstest Online-Bestenliste (S2), Testkonzept (T8)
 ```
 
 ## Navigation (gemäss Workflow)
@@ -51,3 +52,9 @@ docs/                     Entscheide und Anleitungen
 | Spielen ↔ Bestenliste | Tab |
 
 Im Quiz ist die Tab-Bar ausgeblendet; Android-Zurück öffnet dort die Rückfrage «Quiz wirklich abbrechen?».
+
+## Online-Bestenliste
+
+Jeder Score wird zuerst auf dem Handy gespeichert (Verlauf + Warteschlange) und dann an Firebase Firestore
+(Sammlung `scores_m335`) gesendet: beim App-Start, nach jeder Runde und beim Öffnen der Bestenliste.
+Ohne Netz bleibt er in der Warteschlange und wird später automatisch nachgeschickt. Details: `docs/S2_Online-Bestenliste.md`.

@@ -1,4 +1,4 @@
-# Status · Stand Mi 11.11.2026
+# Status · Stand Mi 11.11.2026 (Abend)
 
 | Nr | Paket | Status | Bemerkung |
 |----|-------|--------|-----------|
@@ -13,14 +13,20 @@
 | S5 | Quiz-Logik | fertig | `src/services/quizLogic.js`: Runde, Antwort prüfen, Punkte 10/20/30, Fortschritt, Doppel-Tap-Schutz; mit Tests |
 | S6 | Persistenz | fertig (Web) | Nickname, letzte Einstellungen, Verlauf (max. 100), Warteschlange (max. 50). Nach Neuladen alles noch da. **Offen:** Neustart-Test auf dem Handy |
 | T5 | Resultat + Bestenliste (UI) | fertig | Resultat: Ring, Konfetti, Rechenzeile, Status «Gespeichert · Rang #». Bestenliste: Treppchen, Liste, «Du», Online/Lokal, Kategorie-Filter, Zustände lädt/leer/kein Netz/nicht eingerichtet, Herunterziehen |
+| S7 | Online-Bestenliste | fertig | `src/services/scoreSync.js`: Warteschlange wird beim App-Start, wenn die App wieder aktiv wird, nach jeder Runde und beim Öffnen/Herunterziehen der Bestenliste gesendet. Resultat zeigt «Score wird gesendet …», «Online gespeichert · Rang #x von y» oder «Offline – lokal gespeichert» mit «Jetzt erneut senden». Bestenliste zeigt «1 Score wartet noch auf das Senden». Ungültige Einträge blockieren die Warteschlange nicht |
+| S8 | Integration & Bugfixes | fertig (Web) | Alle 5 Screens zusammen durchgespielt; Expo-Pakete auf die aktuellen Patch-Versionen gebracht (`npx expo install --fix`). **Offen:** auf beiden Handys |
+| T8 | Testkonzept + Test auf Gerät | in Arbeit | `docs/T8_Testkonzept.md`: Teststufen, 34 Testfälle (Formular, Quiz, Offline, Persistenz, Abbrechen, Online), Spalte Web ausgefüllt. **Offen:** Spalten Handy 1 und Handy 2 |
+| T6 | Technische Dokumentation | – | nicht nötig (Entscheid Team) |
+| T7 | Präsentation | – | nicht nötig (Entscheid Team) |
 
 ## Geprüft
-- `npm test`: 31 / 31 Tests bestanden (Validierung, Quiz-API, Quiz-Logik, Bestenliste/Warteschlange, Online-Service)
+- `npm test`: 37 / 37 Tests bestanden (Validierung, Quiz-API, Quiz-Logik, Bestenliste/Warteschlange, Online-Service)
 - `npx expo-doctor`: 20 / 20 Checks bestanden; Android-Bundle baut fehlerfrei
-- Im Browser (Handygrösse) durchgespielt: Setup → ganze Runde mit echten API-Fragen → Resultat → lokale Bestenliste → Seite neu geladen → Daten noch da
+- Im Browser (Handygrösse) durchgespielt: Setup → Runde → Resultat «Online gespeichert · Rang» → Bestenliste online mit «Du»; Offline simuliert → «Offline – lokal gespeichert» → «Jetzt erneut senden» → online; Validierung (25 Fragen) und Abbrechen geprüft
 
 ## Noch nicht geprüft
-- Expo Go auf echten Handys (iOS und Android), inkl. Neustart der App und Android-Zurück
+- Expo Go auf echten Handys (iOS und Android): Neustart der App, Android-Zurück, echter Flugmodus (siehe Testkonzept)
 
-## Nächste Pakete (Do 12.11.)
-S7 Online-Bestenliste (Warteschlange senden, Resultat-Status «wird gesendet» / «offline»), S8 Integration, T6 Doku, T7 Präsentation, T8 Test auf Geräten
+## Hinweis für die Demo
+Beim Testen sind in `scores_m335` Einträge mit dem Nickname «QuizMaus88» entstanden. Wer eine leere Online-Bestenliste
+zeigen will, löscht sie in der Firebase-Konsole (Firestore → scores_m335); die App selbst kann nicht löschen (Regeln).
