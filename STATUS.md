@@ -1,23 +1,26 @@
-# Status · Stand Fr 6.11.2026, 16:30
+# Status · Stand Mi 11.11.2026
 
 | Nr | Paket | Status | Bemerkung |
 |----|-------|--------|-----------|
-| S1 | Projekt-Setup | erledigt (lokal) | Expo SDK 58, Expo Router, AsyncStorage, Nunito; Git-Repo lokal. **Offen:** GitHub-Repo anlegen, pushen, Tanushree einladen; Start in Expo Go auf beiden Handys prüfen |
-| S2 | Machbarkeitstest Online-Bestenliste | vorbereitet | Entscheid **Supabase** (REST, läuft in Expo Go). Service + Test-Skript fertig. **Offen:** Supabase-Projekt anlegen, `npm run test:online` ausführen (Anleitung `docs/S2_Online-Bestenliste.md`) |
-| T1 | Theme & UI-Bausteine | erledigt | Alle Bausteine auf dem Test-Screen `/bausteine`; Touch-Targets ≥ 48 dp, Hauptbuttons 56 dp, Antworten 64 dp |
-| S3 | Navigation | erledigt | 5 Screens erreichbar; Stack, Tab, Modal, Replace, popToTop getestet (Web). Android-Zurück auf Frage/Resultat eingebaut, **auf Android-Handy noch prüfen** |
-| T2 | Home + Nickname | erledigt | Erster Start mit Formular, Modal «Nickname ändern», Validierung 3–15 Zeichen beim Feld, Nickname bleibt gespeichert |
-| S4 | Quiz-API-Service | erledigt | Kategorien + Fragen live, Sonderzeichen, Mischen; Offline, Timeout 10 s, Codes 1/5 mit Tests belegt (`npm test`) |
-| T3 | Quiz-Setup | erledigt | Kategorie aus API, Segmente, Stepper 5–20 + Direkteingabe, Fehler beim Feld, Start gesperrt, Lade-/Fehlerzustand; letzte Einstellungen werden gespeichert (Schnellstart) |
+| S1 | Projekt-Setup | fertig | Repo auf GitHub. **Offen:** Start in Expo Go auf beiden Handys, Tanushree klont und pusht |
+| S2 | Machbarkeitstest Online-Bestenliste | in Arbeit | Entscheid **Supabase**, Service + Test-Skript fertig. **Offen:** Supabase-Projekt anlegen, `npm run test:online` (Anleitung `docs/S2_Online-Bestenliste.md`) |
+| T1 | Theme & UI-Bausteine | fertig | Test-Screen `/bausteine` |
+| S3 | Navigation | fertig | Android-Zurück auf echtem Android-Handy noch prüfen |
+| T2 | Home + Nickname | fertig | |
+| S4 | Quiz-API-Service | fertig | |
+| T3 | Quiz-Setup | fertig | Stepper rechnet jetzt auch bei schnellen Mehrfach-Taps richtig |
+| T4 | Screen Frage + Feedback (UI) | fertig | Spiel-Design wie Screendesign: Punkte-Pille, Fortschrittsbalken, weisse Fragekarte, Feedback-Balken, ✓/✗ mit Text, Rest ausgegraut, «Weiter ›», Lade-Platzhalter, «Keine Verbindung» |
+| S5 | Quiz-Logik | fertig | `src/services/quizLogic.js`: Runde, Antwort prüfen, Punkte 10/20/30, Fortschritt, Doppel-Tap-Schutz; mit Tests |
+| S6 | Persistenz | fertig (Web) | Nickname, letzte Einstellungen, Verlauf (max. 100), Warteschlange (max. 50). Nach Neuladen alles noch da. **Offen:** Neustart-Test auf dem Handy |
+| T5 | Resultat + Bestenliste (UI) | fertig | Resultat: Ring, Konfetti, Rechenzeile, Status «Gespeichert · Rang #». Bestenliste: Treppchen, Liste, «Du», Online/Lokal, Kategorie-Filter, Zustände lädt/leer/kein Netz/nicht eingerichtet, Herunterziehen |
 
 ## Geprüft
-- `npm test`: 18 / 18 Tests bestanden
-- `npx expo-doctor`: 20 / 20 Checks bestanden
-- Android-Bundle (`npx expo export --platform android`) baut fehlerfrei
-- Im Browser (Expo Web, Handygrösse) durchgespielt: Erster Start → Nickname → Home → Setup (Fehlerfall 25 Fragen) → Frage mit echten API-Fragen → Feedback → Abbrechen-Modal → Resultat (Replace) → popToTop → Nickname ändern
+- `npm test`: 31 / 31 Tests bestanden (Validierung, Quiz-API, Quiz-Logik, Bestenliste/Warteschlange, Online-Service)
+- `npx expo-doctor`: 20 / 20 Checks bestanden; Android-Bundle baut fehlerfrei
+- Im Browser (Handygrösse) durchgespielt: Setup → ganze Runde mit echten API-Fragen → Resultat → lokale Bestenliste → Seite neu geladen → Daten noch da
 
 ## Noch nicht geprüft
-- Expo Go auf echten Handys (iOS und Android)
+- Expo Go auf echten Handys (iOS und Android), inkl. Neustart der App und Android-Zurück
 
-## Nächste Pakete (Mi 11.11.)
-T4 Frage-UI fertig, S5 Quiz-Logik (Punkte 10/20/30, Fortschritt), S6 Persistenz (Verlauf, Warteschlange), T5 Resultat + Bestenliste
+## Nächste Pakete (Do 12.11.)
+S7 Online-Bestenliste (Warteschlange senden, Resultat-Status «wird gesendet» / «offline»), S8 Integration, T6 Doku, T7 Präsentation, T8 Test auf Geräten
