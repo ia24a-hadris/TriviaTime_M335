@@ -26,6 +26,9 @@ export default function TabLayout() {
         options={{
           title: 'Spielen',
           tabBarAccessibilityLabel: 'Spielen',
+          // Beim Wechsel zur Bestenliste den Spielen-Stack auf Home zurücksetzen:
+          // Tab «Spielen» führt danach immer zur Startseite, nicht zum alten Resultat.
+          popToTopOnBlur: true,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon focused={focused}>
               <Ionicons name="play-circle-outline" size={24} color={color} />

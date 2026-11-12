@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { topScores, rankInCategory, rankInList, addToHistory, flushQueue, compareScores } from '../src/services/leaderboard.js';
+import {
+  topScores,
+  rankInCategory,
+  rankInList,
+  addToHistory,
+  flushQueue,
+  compareScores,
+  groupByDifficulty,
+  categoryFilterOptions,
+  ALL_CATEGORIES,
+} from '../src/services/leaderboard.js';
 
 const e = (id, points, categoryName = 'Science & Nature', date = `2026-11-0${id}`) => ({ id, points, categoryName, date });
 
@@ -80,4 +90,44 @@ test('Online-Rang: Position und Anzahl, null wenn nicht gefunden', () => {
   const sorted = [e(2, 300), e(1, 200), e(3, 100)];
   assert.deepEqual(rankInList(sorted, 1), { rank: 2, total: 3 });
   assert.equal(rankInList(sorted, 9), null);
+});
+
+test('Schwierigkeit: Top-Liste filtert, Aufteilen ergibt drei sortierte Seiten', () => {
+  const list = [
+    { ...e(1, 30), difficulty: 'easy' },
+    { ...e(2, 60), difficulty: 'medium' },
+    { ...e(3, 50), difficulty: 'easy' },
+    { ...e(4, 90), difficulty: 'hard' },
+  ];
+  assert.deepEqual(
+    topScores(list, { difficulty: 'easy' }).map((x) => x.id),
+    [3, 1]
+  );
+  const pages = groupByDifficulty(list);
+  assert.deepEqual(Object.keys(pages), ['easy', 'medium', 'hard']);
+  assert.deepEqual(pages.easy.map((x) => x.id), [3, 1]);
+  assert.deepEqual(pages.medium.map((x) => x.id), [2]);
+  assert.deepEqual(pages.hard.map((x) => x.id), [4]);
+  assert.deepEqual(groupByDifficulty([]), { easy: [], medium: [], hard: [] });
+  assert.equal(groupByDifficulty(list, 1).easy.length, 1);
+});
+
+test('Kategorie-Filter: «Alle» zuerst, alle API-Kategorien, dazu Kategorien nur aus dem Verlauf', () => {
+  const api = [
+    { id: 17, name: 'Science & Nature' },
+    { id: 9, name: 'General Knowledge' },
+  ];
+  const history = [{ categoryName: 'History', categoryId: 23 }, { categoryName: 'General Knowledge', categoryId: 9 }];
+  const options = categoryFilterOptions(api, history);
+  assert.deepEqual(
+    options.map((o) => o.name),
+    ['Alle Kategorien', 'General Knowledge', 'History', 'Science & Nature']
+  );
+  assert.equal(options[0].id, ALL_CATEGORIES);
+  assert.equal(options.find((o) => o.name === 'History').categoryId, 23);
+  // ohne Netz (keine API-Kategorien): nur «Alle» und die aus dem Verlauf
+  assert.deepEqual(
+    categoryFilterOptions([], history).map((o) => o.name),
+    ['Alle Kategorien', 'General Knowledge', 'History']
+  );
 });

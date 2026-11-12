@@ -4,7 +4,7 @@
 // - Sonderzustände: Kategorien laden / kein Netz mit «Erneut versuchen»
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Screen from '@/components/Screen';
 import ScreenHeader from '@/components/ScreenHeader';
 import SelectField from '@/components/SelectField';
@@ -32,6 +32,11 @@ export default function SetupScreen() {
   const [difficulty, setDifficulty] = useState('medium');
   const [amount, setAmount] = useState('10');
 
+  // Vorauswahl aus der Bestenliste («Quiz starten» bei einer leeren Liste)
+  const params = useLocalSearchParams();
+  const presetCategoryId = params.categoryId ? Number(params.categoryId) : null;
+  const presetDifficulty = DIFFICULTY_LABEL[params.difficulty] ? params.difficulty : null;
+
   const loadCategories = useCallback(async () => {
     setLoadState('loading');
     try {
@@ -45,12 +50,15 @@ export default function SetupScreen() {
       } else {
         setCategoryId(DEFAULT_CATEGORY_ID);
       }
+      // Vorauswahl aus der Bestenliste hat Vorrang
+      if (presetCategoryId != null && cats.some((c) => c.id === presetCategoryId)) setCategoryId(presetCategoryId);
+      if (presetDifficulty) setDifficulty(presetDifficulty);
       setLoadState('ok');
     } catch (err) {
       setLoadError(errorMessage(err));
       setLoadState('error');
     }
-  }, []);
+  }, [presetCategoryId, presetDifficulty]);
 
   useEffect(() => {
     loadCategories();

@@ -10,13 +10,43 @@ export function compareScores(a, b) {
   return String(a.date).localeCompare(String(b.date));
 }
 
-/** Top-Liste aus dem lokalen Verlauf, optional nur eine Kategorie. */
-export function topScores(history, { categoryName, limit = TOP_LIMIT } = {}) {
+/** Reihenfolge der Bestenlisten-Seiten (Wischen: Leicht → Mittel → Schwer). */
+export const DIFFICULTIES = ['easy', 'medium', 'hard'];
+
+/** Top-Liste aus dem lokalen Verlauf, optional nur eine Kategorie und/oder Schwierigkeit. */
+export function topScores(history, { categoryName, difficulty, limit = TOP_LIMIT } = {}) {
   return history
     .filter((e) => !categoryName || e.categoryName === categoryName)
+    .filter((e) => !difficulty || e.difficulty === difficulty)
     .slice()
     .sort(compareScores)
     .slice(0, limit);
+}
+
+/**
+ * Einträge nach Schwierigkeit aufteilen, jede Liste sortiert und auf limit begrenzt.
+ * Rückgabe: { easy: [...], medium: [...], hard: [...] } – eine Liste pro Bestenlisten-Seite.
+ */
+export function groupByDifficulty(list, limit = TOP_LIMIT) {
+  return Object.fromEntries(DIFFICULTIES.map((d) => [d, topScores(list, { difficulty: d, limit })]));
+}
+
+export const ALL_CATEGORIES = 'all';
+
+/**
+ * Optionen für den Kategorie-Filter: «Alle Kategorien», dann alle Kategorien der Quiz-API.
+ * Kategorien, die nur im Verlauf vorkommen (z. B. ohne Netz, API nicht geladen), kommen auch dazu.
+ * Rückgabe: [{ id: Name oder 'all', name, categoryId }] – alphabetisch.
+ */
+export function categoryFilterOptions(apiCategories = [], history = []) {
+  const byName = new Map();
+  for (const c of apiCategories) byName.set(c.name, c.id);
+  for (const e of history) if (e.categoryName && !byName.has(e.categoryName)) byName.set(e.categoryName, e.categoryId);
+  const names = [...byName.keys()].sort((a, b) => a.localeCompare(b));
+  return [
+    { id: ALL_CATEGORIES, name: 'Alle Kategorien', categoryId: null },
+    ...names.map((name) => ({ id: name, name, categoryId: byName.get(name) ?? null })),
+  ];
 }
 
 /** Rang (1, 2, …) eines Eintrags innerhalb seiner Kategorie im lokalen Verlauf. */

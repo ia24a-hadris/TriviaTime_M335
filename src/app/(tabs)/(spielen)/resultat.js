@@ -1,7 +1,8 @@
 // Screen 4 · Resultat (Paket T5 UI, Daten aus S5/S6)
 //
 // Wird mit Replace geöffnet → kein Zurück ins beendete Quiz.
-// «Nochmals spielen» → Replace zur Frage · «Startseite» → popToTop · «Bestenliste» → Tab
+// «Nochmals spielen» → Replace zur Frage · «Startseite» → popToTop
+// «Bestenliste» → Tab, direkt auf der Seite mit Kategorie und Schwierigkeit dieser Runde
 // Der Score ist beim Öffnen schon lokal gespeichert (Frage-Screen, saveResult).
 // S7: Danach wird er online gesendet; der Status zeigt «wird gesendet», «online gespeichert · Rang»
 // oder «offline – lokal gespeichert» mit «Jetzt erneut senden» (Selbstbeschreibungsfähigkeit, Fehlertoleranz).
@@ -142,7 +143,7 @@ export default function ResultatScreen() {
 
         <AppButton title="Nochmals spielen" icon="refresh" onPress={playAgain} />
         <View style={styles.row}>
-          <AppButton title="Bestenliste" variant="secondary" onPress={() => router.navigate('/bestenliste')} style={{ flex: 1 }} />
+          <AppButton title="Bestenliste" variant="secondary" onPress={() => router.navigate({ pathname: '/bestenliste', params: { categoryName: entry.categoryName, difficulty: entry.difficulty } })} style={{ flex: 1 }} />
           <AppButton title="Startseite" variant="secondary" onPress={() => router.dismissAll()} style={{ flex: 1 }} />
         </View>
       </View>

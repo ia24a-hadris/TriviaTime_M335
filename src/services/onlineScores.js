@@ -4,14 +4,15 @@
 // Sicherheitsregeln hat und das Firebase-JS-SDK nachweislich in Expo Go läuft.
 // TriviaTime_M335 nutzt die eigene Sammlung «scores_m335», damit sich nichts mit anderen Versionen mischt.
 //
-// Kern: saveScore und getTopScores (Konzept Kapitel 5); dazu getOnlineRank für die Resultat-Anzeige.
+// Kern: saveScore und getTopScores (Konzept Kapitel 5); dazu getScoresByDifficulty für die
+// Bestenlisten-Seiten Leicht/Mittel/Schwer und getOnlineRank für die Resultat-Anzeige.
 // Online landen nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum.
 
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { firebaseConfig } from '../config/firebaseConfig.js';
 import { QuizApiError, TIMEOUT_MS } from './quizApi.js';
-import { rankInList } from './leaderboard.js';
+import { groupByDifficulty, rankInList } from './leaderboard.js';
 
 export const COLLECTION = 'scores_m335';
 export const TEST_CATEGORY_ID = 0; // Einträge vom Machbarkeitstest – werden nicht angezeigt
@@ -118,6 +119,30 @@ export async function getTopScores({ categoryName, max = 20 } = {}) {
     const snap = await withTimeout(getDocs(q));
     return sortTop(
       snap.docs.map((d) => fromDoc(d.id, d.data())),
+      max
+    );
+  } catch (err) {
+    throw toAppError(err);
+  }
+}
+
+/**
+ * Bestenliste pro Schwierigkeit: { easy: [...], medium: [...], hard: [...] }, je Top 20.
+ * Eine Abfrage für alle drei Seiten; aufgeteilt und sortiert wird lokal (groupByDifficulty),
+ * damit Firestore keinen zusammengesetzten Index braucht.
+ */
+export async function getScoresByDifficulty({ categoryName, max = 20 } = {}) {
+  try {
+    const scores = collection(database(), COLLECTION);
+    const q = categoryName
+      ? query(scores, where('kategorie', '==', categoryName), limit(500))
+      : query(scores, orderBy('punkte', 'desc'), limit(500));
+    const snap = await withTimeout(getDocs(q));
+    return groupByDifficulty(
+      sortTop(
+        snap.docs.map((d) => fromDoc(d.id, d.data())),
+        Infinity
+      ),
       max
     );
   } catch (err) {
