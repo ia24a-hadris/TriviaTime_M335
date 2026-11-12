@@ -96,7 +96,11 @@ Legende Resultat: ✓ bestanden · ✗ Fehler (Nr. in der Fehlerliste) · – ni
 | 1 | 6.11. Web | «+» im Stepper auf schmalen Screens abgeschnitten | behoben |
 | 2 | 6.11. Web | Schnelle Mehrfach-Taps auf + / − gingen verloren | behoben |
 | 3 | 11.11. Web | Alte Einträge in der Warteschlange (fehlende Felder) hätten das Senden für immer blockiert | behoben: ungültige Einträge werden verworfen (Unit-Test) |
-| 4 | | | |
+| 4 | 12.11. iPhone, Samsung | Resultat: «4 / 10 richtig» liegt unter dem Ring über «40 Punkte» (`absoluteFillObject` gibt es in React Native 0.88 nicht mehr; im Browser nicht sichtbar) | behoben |
+| 5 | 12.11. iPhone | Kategorie-Auswahl (Modal): Titel liegt unter der Statusleiste | behoben: Safe Area im Modal |
+| 6 | 12.11. iPhone | Nach Frage/Resultat bleibt die Statusleiste auf hellen Screens weiss und kaum lesbar | behoben: Statusleiste nur für den sichtbaren Screen |
+| 7 | 12.11. Samsung | Home: Karte «Dein bester Score» wirkt unten abgeschnitten (kleiner Bildschirm, Inhalt scrollt hinter den Buttons) | behoben: Linie über den Buttons, solange darüber noch Inhalt folgt |
+| 8 | | | |
 
 ## Was bewusst nicht getestet wird
 - Mehrere Hundert Einträge online (Schulprojekt, Top 20 reicht).
