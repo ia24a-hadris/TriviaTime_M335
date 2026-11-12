@@ -36,7 +36,8 @@ export default function ScoreRing({ correct, amount, size = 190, stroke = 18 }) 
 }
 
 const styles = StyleSheet.create({
-  center: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  // Text über dem Ring zentrieren (absoluteFillObject gibt es in React Native 0.88 nicht mehr)
+  center: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
   big: { fontFamily: fonts.black, fontSize: 42, color: colors.white },
   small: { fontFamily: fonts.bold, fontSize: 16, color: '#D6D0F5', marginTop: -4 },
 });

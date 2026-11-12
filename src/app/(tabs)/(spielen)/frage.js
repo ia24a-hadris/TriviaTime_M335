@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import FocusedStatusBar from '@/components/FocusedStatusBar';
 import { Ionicons } from '@expo/vector-icons';
 import IconButton from '@/components/IconButton';
 import AnswerOption from '@/components/AnswerOption';
@@ -103,7 +103,7 @@ export default function FrageScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <StatusBar style="light" />
+      <FocusedStatusBar style="light" />
 
       {/* Kopfzeile: ✕ · Frage x / n · Punkte */}
       <View style={styles.top}>

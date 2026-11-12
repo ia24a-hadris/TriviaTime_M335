@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import FocusedStatusBar from '@/components/FocusedStatusBar';
 import { Ionicons } from '@expo/vector-icons';
 import AppButton from '@/components/AppButton';
 import ScoreRing from '@/components/ScoreRing';
@@ -113,7 +113,7 @@ export default function ResultatScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: 24 }}>
-      <StatusBar style="light" />
+      <FocusedStatusBar style="light" />
       <View style={[styles.hero, { paddingTop: insets.top + 12 }]}>
         <Confetti />
         <Text style={styles.heroTitle} accessibilityRole="header">

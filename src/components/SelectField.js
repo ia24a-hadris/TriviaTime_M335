@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, sizes, text } from '@/theme';
 
@@ -36,44 +36,47 @@ export default function SelectField({ label, value, options, onChange, error, pl
       )}
 
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <Text style={[text.title, { flex: 1 }]} accessibilityRole="header">
-              {label} wählen
-            </Text>
-            <Pressable
-              onPress={() => setOpen(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Schliessen"
-              style={styles.close}
-            >
-              <Ionicons name="close" size={26} color={colors.text} />
-            </Pressable>
-          </View>
-          <FlatList
-            data={options}
-            keyExtractor={(o) => String(o.id)}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            ItemSeparatorComponent={() => <View style={styles.sep} />}
-            renderItem={({ item }) => {
-              const active = item.id === value;
-              return (
-                <Pressable
-                  onPress={() => {
-                    onChange(item);
-                    setOpen(false);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.rowText, active && { color: colors.primary }]}>{item.name}</Text>
-                  {active && <Ionicons name="checkmark" size={22} color={colors.primary} />}
-                </Pressable>
-              );
-            }}
-          />
-        </SafeAreaView>
+        {/* Eigener Provider: im Modal kennt iOS sonst die Statusleiste nicht und der Titel rutscht darunter */}
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={[text.title, { flex: 1 }]} accessibilityRole="header">
+                {label} wählen
+              </Text>
+              <Pressable
+                onPress={() => setOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Schliessen"
+                style={styles.close}
+              >
+                <Ionicons name="close" size={26} color={colors.text} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={options}
+              keyExtractor={(o) => String(o.id)}
+              contentContainerStyle={{ paddingBottom: 24 }}
+              ItemSeparatorComponent={() => <View style={styles.sep} />}
+              renderItem={({ item }) => {
+                const active = item.id === value;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      onChange(item);
+                      setOpen(false);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.rowText, active && { color: colors.primary }]}>{item.name}</Text>
+                    {active && <Ionicons name="checkmark" size={22} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+            />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </View>
   );
