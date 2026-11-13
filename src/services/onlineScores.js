@@ -9,7 +9,7 @@
 // Online landen nur Nickname, Punkte, Kategorie, Schwierigkeit, Anzahl, Richtige und Datum.
 
 import { getApps, initializeApp } from 'firebase/app';
-import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, setDoc, setLogLevel, where } from 'firebase/firestore';
 import { firebaseConfig } from '../config/firebaseConfig.js';
 import { QuizApiError, TIMEOUT_MS } from './quizApi.js';
 import { groupByDifficulty, rankInList } from './leaderboard.js';
@@ -28,6 +28,10 @@ function database() {
   if (!db) {
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     db = getFirestore(app);
+    // Firestore schreibt ohne Netz eigene Fehlermeldungen ins Log («Could not reach Cloud Firestore
+    // backend»). Expo Go zeigt diese als roten Kasten, obwohl wir den Fehler selbst abfangen
+    // (Warteschlange + «Offline – lokal gespeichert»). Darum die Logs der Bibliothek ausschalten.
+    setLogLevel('silent');
   }
   return db;
 }
